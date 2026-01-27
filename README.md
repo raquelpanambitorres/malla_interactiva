@@ -1,29 +1,39 @@
-# Curriculum Graph (Cytoscape.js)
+# Curriculum Graph (vis.js)
 
-Visualizador de mallas curriculares universitarias basado en **Cytoscape.js**, con disposición
-por semestres en columnas y relaciones de correlatividad entre materias.
+Visualizador de mallas curriculares universitarias basado en **vis.js**, con disposición por
+semestres en columnas y relaciones de correlatividad entre materias.
 
 El objetivo del proyecto es:
 
 * Leer una malla académica desde un **JSON**
 * Renderizar un **grafo dirigido**
 * Organizar las materias por **semestre**
-* Permitir **interacción** (click + modal con información)
+* Permitir **interacción** (hover para destacar relaciones)
 * Mantener el código desacoplado para reutilizarlo como **librería**
 
 ## Tecnologías utilizadas
 
-* **Cytoscape.js** – motor de grafos
+* **vis.js** – motor de grafos y redes
 * **JavaScript ES Modules**
-* **HTML + CSS** (sin framework UI por ahora)
+* **Vite** para entorno de desarrollo
 
-Se utiliza Vite para simplificar el entorno de desarrollo.
+## Estructura del proyecto
+
+```
+curriculum-graph/
+├── index.html              # Página de ejemplo para pruebas
+├── README.md
+└── src
+    ├── data
+    │   └── example-curriculum.json  # Ejemplo de malla curricular
+    └── graph_lib.js                 # Biblioteca principal del grafo
+```
 
 ## Cómo correr el proyecto
 
 ### Requisitos
 
-* Node.js 18+ recomendado
+* Node.js 18+
 * npm
 
 ### Instalación
@@ -39,122 +49,190 @@ npm run dev
 ```
 
 Vite levantará el servidor en:
-
 ```
 http://localhost:5173/
 ```
 
-Abrí esa URL en el navegador.
+## Uso de la librería
 
----
+La librería `graph_lib.js` expone dos funciones principales:
 
-## Estructura del proyecto
+```javascript
+// 1. Preparar los datos del grafo
+prepareGraphData(curriculumData);
 
-```
-curriculum-graph/
-├─ index.html              # Entry point (requerido por Vite)
-├─ package.json
-├─ src/
-│  ├─ index.js             # Bootstrap de la app
-│  ├─ graph/
-│  │  ├─ initGraph.js      # Inicialización de Cytoscape
-│  │  └─ loadCurriculum.js # Función que convierte JSON → grafo
-│  └─ data/
-│     └─ curriculum.example.json
+// 2. Renderizar el grafo en un elemento del DOM con el id proporcionado
+renderGraph('graph-container');
 ```
 
-### Filosofía
+Ejemplo completo:
 
-* `graph/` contiene código reutilizable (pensado como librería)
-* `data/` contiene únicamente datos
-* `index.js` solo como entry point de pruebas
+```html
+<div id="graph-container" style="width: 100%; height: 600px;"></div>
+<script type="module">
+  import curriculumData from './data/IIN.json' assert { type: 'json' };
+  import { prepareGraphData, renderGraph } from './src/graph_lib.js';
+  
+  prepareGraphData(curriculumData);
+  renderGraph('graph-container');
+</script>
+```
 
-## Flujo de funcionamiento
+## Colaboración - Cómo agregar una nueva malla curricular
 
-1. `index.html` define el contenedor del grafo
-2. `index.js`:
-   * importa el JSON
-   * inicializa Cytoscape
-   * carga el curriculum
-   * 
-3. `loadCurriculum.js`:
-   * transforma materias en **nodes**
-   * transforma correlatividades en **edges**
-4. Cytoscape:
-   * renderiza el grafo
-   * aplica layout por columnas (semestres)
+### 1. Preparación inicial
 
-## Estructura del JSON de malla curricular
+1. **Forkea** el repositorio a tu cuenta de GitHub
+2. **Clona** tu fork localmente:
+   ```bash
+   git clone https://github.com/TU_USUARIO/curriculum-graph.git
+   cd curriculum-graph
+   ```
 
-Archivo ejemplo:
-`src/data/curriculum.example.json`
+### 2. Crear el archivo JSON de la malla
+
+Cada carrera debe tener su propio archivo JSON con las siglas de la carrera en `src/data/`:
+
+**Reglas importantes para el archivo JSON:**
+- **Nombre del archivo**:
+  Debe llamarse `SIGLAS.json` usando las siglas oficiales de la carrera (ej:
+  `IIN.json`, `LCIK.json`, `PED.json`)
+- **Coherencia de identificadores**:
+  + El campo `id` dentro de `career` debe coincidir exactamente con las siglas del nombre del
+    archivo
+  + `totalSemestres` debe reflejar el número real de semestres que dura la carrera
+- **Identificación de materias**:
+  + Cada materia debe tener un **ID único** que es la clave del objeto dentro de `subjects`
+  + El ID debe seguir este formato:
+    - Todo en **minúsculas**
+    - Sin **acentos** ni caracteres especiales
+    - Con espacios simples
+    - Números pasarlos a romanos en **mayúsculas** para niveles (I, II, III, IV, V, etc.)
+    - Para electivas/optativas:
+      `"electiva I"`, `"optativa II"`, etc. **Ejemplos de IDs correctos:**
+        * `"matematica I"`
+        * `"fisica II"`
+        * `"analisis matematico III"`
+        * `"electiva I"`
+        * `"optativa II"`
+- **Correlatividades**:
+  + Los `prerequisites` son arrays de IDs de materias que deben cursarse previamente
+  + Todos los IDs referenciados en `prerequisites` deben existir en la malla
+  + Para materias sin prerrequisitos, usar array vacío `[]`
+- **Organización**:
+  + Mantener las materias ordenadas por semestre dentro del JSON
+  + Asegurar que `semester` sea un número entre 1 y `totalSemestres`
+
+**Ejemplo del Formato Requerido:**
 
 ```json
 {
   "career": {
-    "id": "cs",
-    "name": "Ingeniería Informática"
+    "id": "IIN",
+    "name": "Ingeniería Informática",
+    "totalSemestres": 3
   },
-  "subjects": [
-    {
-      "id": "alg1",
-      "name": "Álgebra I",
+
+  "subjects": {
+    "matematica I": {
+      "name": "Matemática I",
       "semester": 1,
-      "description": "Álgebra básica para ingeniería",
+      "credits": 5,
+      "desc": "Álgebra básica, conjuntos, funciones y sistemas de ecuaciones.",
       "prerequisites": []
     },
-    {
-      "id": "alg2",
-      "name": "Álgebra II",
-      "semester": 2,
-      "description": "Álgebra lineal",
-      "prerequisites": ["alg1"]
-    },
-    {
-      "id": "prog1",
+
+    ... mas materias
+
+    "matematica II": {
       "name": "Programación I",
-      "semester": 1,
-      "description": "Introducción a la programación",
-      "prerequisites": []
-    },
-    {
-      "id": "prog2",
-      "name": "Programación II",
       "semester": 2,
-      "description": "Programación estructurada",
-      "prerequisites": ["prog1"]
-    }
-  ]
+      "credits": 4,
+      "desc": "Mas matematica aburrida",
+      "prerequisites": ["matematica I"]
+    },
+  }
 }
 ```
 
-### Campos de cada materia
 
-| Campo           | Tipo     | Descripción                  |
-| --------------- | -------- | ---------------------------- |
-| `id`            | string   | Identificador único          |
-| `name`          | string   | Nombre visible               |
-| `semester`      | number   | Semestre (columna)           |
-| `description`   | string   | Información extendida        |
-| `prerequisites` | string[] | IDs de materias correlativas |
+### 3. Probar localmente
 
-## Layout por semestres
+1. Puedes modificar `index.html`, pero **esos cambios no los subas en el commit**:
+2. Ejecuta `npm run dev` y verifica que:
+   - Todas las materias se muestran
+   - Los prerrequisitos están correctamente conectados
+   - No hay errores en la consola
 
-* Cada **semestre es una columna**
-* La posición X se calcula como:
+### 4. Crear Pull Request
 
-```
-x = semester * columnWidth
-```
+1. **Agrega y commitea** tus cambios:
+   ```bash
+   git add src/data/IIN.json
+   git commit -m "Agrega malla curricular de Ingeniería Informática (IIN)"
+   ```
+2. **Sube los cambios** a tu fork:
+   ```bash
+   git push origin agregar-malla-IIN
+   ```
+3. **Ve a GitHub** y crea un Pull Request desde tu fork hacia el repositorio original.
+4. Agrega un **screenshot** de la malla que acabas de cargar dentro de la descripcion del PR.
 
-Esto permite:
+### 5. Relacionar con Issue
 
-* lectura clara de progresión académica
-* fácil customización futura (layout propio)
+**IMPORTANTE:** Cada PR debe tener un Issue asociado.
+Dichos issues ya se encontraran generados en el repositorio, tu debes hacer referencia a estos
+issues de la siguiente manera.
 
-## Próximos pasos naturales
+En tu Pull Request, en la descripción del PR, menciona el Issue que resuelves:
 
-* Layout automático por filas dentro del semestre
-* Modal real en vez de `alert`
-* Exportación como librería standalone
-* Integración con Tailwind / temas
+> Esta PR agrega la malla curricular de Ingeniería Informática.
+> 
+> - Agrega archivo IIN.json con 42 materias
+> - Cubre 10 semestres académicos
+> - Incluye todas las correlatividades
+> 
+> Resolves #12          <-- La parte importante!!!
+
+Para mas informacion puedes leer este
+[articulo](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
+
+## Proceso de revisión
+
+Una vez creado el PR, un maintainer revisará y aprobará el merge si todo está correcto.
+
+Si hay correcciones necesarias, se te pedirá en un comentario dentro del PR.
+Realiza los cambios en tu fork y súbelos; el PR se actualizará automáticamente.
+
+## Convenciones de nombres
+
+| Elemento | Convención | Ejemplo |
+|----------|------------|---------|
+| Archivo JSON | `SIGLAS.json` (mayúsculas) | `IIN.json`, `LCIK.json` |
+| ID de carrera | Siglas (igual al archivo) | `IIN`, `LCIK` |
+| ID de materia | Preferiblemente código corto único | `MAT-101`, `PROG-I` |
+| Nombre de materia | Nombre completo | `Matemática I` |
+
+## Notas importantes
+
+- **No modifiques** `graph_lib.js` a menos que sepas lo que haces
+- Los archivos JSON deben ser válidos
+- Mantén las materias ordenadas por semestre dentro del JSON
+- Verifica que todos los prerrequisitos referenciados existan en la malla
+- Si una materia no tiene prerrequisitos, usa array vacío `[]`
+
+## Problemas comunes y soluciones
+
+### "ID de prerrequisito no encontrado"
+Verifica que el ID en `prerequisites` coincida exactamente con el ID de la materia (incluyendo
+mayúsculas/minúsculas).
+
+### "Materia fuera de rango de semestres"
+Asegúrate que `semester` no sea mayor que `totalSemestres`.
+
+### "El grafo no se renderiza"
+Revisa la consola del navegador para errores y verifica que:
+- El JSON es válido
+- El contenedor del grafo existe en el DOM
+- Vis.js está cargado correctamente
+- Actualizaste el `index.html` correctamente
